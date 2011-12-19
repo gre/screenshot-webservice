@@ -15,17 +15,14 @@ import play.api.Play.current
 
 object Application extends Controller {
 
-  def index = Action {
-    Redirect("http://github.com/gre/screenshot-webservice");
-  }
-
   lazy val cache = new BasicCache()
   val expirationSeconds = 5*60
 
   def screenshot = Action { (request) =>
     request.queryString.get("url").flatMap(_.headOption).map(link => {
-      if(new URI(link).getHost()=="localhost")
-        Forbidden("localhost forbidden")
+      val host = new URI(link).getHost()
+      if(host=="localhost" || host=="127.0.0.1")
+        Forbidden("localhost is forbidden.")
       else {
         val params = ScreenshotParams(
           link, 

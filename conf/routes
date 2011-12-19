@@ -2,9 +2,6 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-# Home page
-GET     /                           controllers.Application.index()
-
 GET     /screenshot.png             controllers.Application.screenshot()
 
 # Map static resources from the /public folder to the /assets URL path
