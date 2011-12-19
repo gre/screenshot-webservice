@@ -8,8 +8,15 @@ It use **PhantomJS** for rendering behind a **Play2 framework** application for 
 
 Requirement
 -----------
+
 * **Play20** *HEAD* to start the application (or only java if you deploy it)
 * `phantomjs` installed in the system
+
+
+Example
+-------
+
+![screenshot](http://i.imgur.com/qDMnD.png)
 
 
 Licence
