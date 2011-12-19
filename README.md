@@ -1,10 +1,9 @@
-Screenshot Webservice
+Screenshot Webservice v1.0
 =====================
 
 Screenshot Webservice is an open-source **REST web service** to perform **web page screenshots**.
 
 It use **PhantomJS** for rendering behind a **Play2 framework** application for handling caching.
-
 
 Requirement
 -----------
@@ -18,6 +17,11 @@ Example
 
 ![screenshot](http://i.imgur.com/qDMnD.png)
 
+
+Release Note
+------------
+
+* v1.0
 
 Licence
 -------
