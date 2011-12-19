@@ -1,14 +1,14 @@
 package screenshots 
 
-import play.api._
-import play.api.libs.concurrent._
-
-import collection.JavaConversions._
-
-import play.api.Play.current
 import sys.process._
+import play.api._
+import play.api.Play.current
 
-case class ScreenshotParams(url: String, width: Int, height: Int)
+case class ScreenshotParams(
+  url: String,
+  width: Int, 
+  height: Int
+)
 
 object LocalScreenshot {
   val script = Play.getFile("phantomjs_scripts/render").getAbsolutePath
@@ -20,7 +20,7 @@ object LocalScreenshot {
 
   def getAbsolutePath(params:ScreenshotParams) = outputDir+"/"+md5(params.url)+"_"+params.width+"_"+params.height+".png"
   
-  def urlToImage(params:ScreenshotParams) : Option[String] = {
+  def apply(params:ScreenshotParams) : Option[String] = {
     val output = getAbsolutePath(params)
     Process(script+" "+params.url+" "+output+" "+params.width+" "+params.height).run().exitValue() match {
         case 0 => Some(output)

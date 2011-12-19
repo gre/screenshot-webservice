@@ -38,7 +38,7 @@ object Application extends Controller {
             None
           }
         }).getOrElse({  
-          val image = LocalScreenshot.urlToImage(params)
+          val image = LocalScreenshot(params)
           cache.set(params.url, image)
           image
         })
