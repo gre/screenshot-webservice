@@ -1,4 +1,4 @@
-Screenshot Webservice v1.0
+Screenshot Webservice
 =====================
 
 Screenshot Webservice is an open-source **REST web service** to perform **web page screenshots**.
@@ -12,19 +12,61 @@ Requirement
 * `phantomjs` installed in the system
 
 
+The API
+=======
+
+Screenshot an URL
+-----------------
+
+`GET /screenshot.png`
+
+### Input
+
+* `url` *Required* : **string**
+* `format` *Optional* : ***{width}*x*{height}*** (example: 1024x1024)
+
+### Response
+
+#### Success
+* Status: 200
+* Content-Type: image/png
+
+#### Forbidden
+something is wrong in your parameters and not supported by the server
+
+* Status: 403
+
+#### InternalServerError
+something goes wrong during the screenshot processing
+
+* Status: 500
+
+
+### Example
+
+`GET /screenshot.png?url=http://github.com&format=1024x1024`
+
+
 Example
 -------
 
-![screenshot](http://i.imgur.com/qDMnD.png)
+![screenshot](http://i.imgur.com/rt3w6.png)
 
 
 Release Note
 ------------
 
-* v1.0
+### v1.0.1
+  * replaced the width and height by format
+  * add autorized formats
+  * better way to forbid local addresses 
+  * configurable expiration
+
+### v1.0
+  * basic version with url, width and height params
 
 Licence
--------
+=======
 
 This software is licensed under the Apache 2 license, quoted below.
 
