@@ -37,7 +37,11 @@ something is wrong in your parameters and not supported by the server
 * Status: 403 Forbidden
 
 #### The server was not able to finish processing the screenshot
+
 * Status: 503 Service Unavailable
+
+To avoid this problem, prefer using a HEAD request before and ensure the resource is ready.
+
 
 #### Internal Server Error
 something goes wrong during the screenshot processing
@@ -54,12 +58,12 @@ Precache an URL
 You can use a **HEAD** request to trigger the screenshot processing.
 The API is the same as the GET API.
 
-There is one new HTTP Status:
+### Additional responses
 
-### The URL is being process but not yet ready
+#### The URL is being process but not yet ready
 * Status: 202 Accepted
 
-### The URL is ready to get
+#### The URL is ready to get
 * Status: 200 Ok
 
 
