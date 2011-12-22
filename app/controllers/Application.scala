@@ -1,66 +1,81 @@
 package controllers
 
+import java.net._
+import java.io._
 import play.api._
 import play.api.mvc._
-
-import java.io._
-import java.net._
-
-import screenshots._
-
-import scalax.io.{ Resource }
-
+import play.api.libs.concurrent._
 import play.api.cache.BasicCache
 import play.api.Play.current
+import screenshot._
+import Screenshot._
+import akka.dispatch._
+
 
 object Application extends Controller {
 
-  lazy val cache = new BasicCache()
-  val expirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
+  def touch = ScreenshotAction { (request, url, format) =>
+    val promise = Screenshot(ScreenshotRequest(url, format)).map { s =>
+      if (s.isDefined) Ok else InternalServerError
+    }
+    AsyncResult(promise.orTimeout(Status(202), 1000).map { p =>
+      p.fold( a=>a, b=>b )
+    })
+  }
 
-  val autorizedFormats:List[Format] = {
-    val conf = Play.configuration.getString("screenshot.format.autorized").getOrElse("any")
-    if(conf=="any") Nil
-    else {
-      conf.split(" ").toList.collect(Format(_) match { 
-        case Some(f) => f 
+  def get = ScreenshotAction { (request, url, format) => 
+    AsyncResult {
+      Screenshot(ScreenshotRequest(url, format)) extend( _.value match {
+        case Redeemed(screenshot) =>
+          screenshot map {
+            Ok(_)
+          } getOrElse {
+            InternalServerError("unable to process the screenshot.")
+          }
+        case Thrown(e) => e match {
+          case e:FutureTimeoutException => Status(503)("The server was not able to finish processing the screenshot")
+        }
       })
     }
   }
-  val defaultFormat = Format(Play.configuration.getString("screenshot.format.default").getOrElse("1024x1024")).getOrElse({
-    Logger.warn("invalid screenshot.format.default conf. Fallback on 1024x1024")
-    Format(1024,1024)
-  })
-
-  val localAddressForbidden = Play.configuration.getBoolean("localAddress.forbidden").getOrElse(true)
-
-  def screenshot = Action { (request) =>
-    request.queryString.get("url").flatMap(_.headOption).map(link => {
-      val format = request.queryString.get("format").flatMap(_.headOption).flatMap(Format(_)).getOrElse(defaultFormat)
-      val address = InetAddress.getByName(new URI(link).getHost())
-      if(address.isLoopbackAddress || localAddressForbidden && address.isSiteLocalAddress)
-        Forbidden("This address is forbidden.")
-      else if( autorizedFormats.length!=0 && !autorizedFormats.contains(format) )
-        Forbidden("format "+format+" unautorized.")
+  
+  object ScreenshotAction {
+    val autorizedFormats:List[Format] = {
+      val conf = Play.configuration.getString("screenshot.format.autorized").getOrElse("any")
+      if(conf=="any") Nil
       else {
-        
-        val params = ScreenshotParams( link, format )
-        val image : Option[String] = cache.get[String](params.url).map(url => {
-          if (new File(url).exists()) Some(url) else {
-            cache.set(url, null)
-            None
-          }
-        }).getOrElse({  
-          val image = LocalScreenshot(params)
-          cache.set(params.url, image)
-          image
+        conf.split(" ").toList.collect(Format(_) match { 
+          case Some(f) => f 
         })
-        image.map(filepath => new FileInputStream(filepath)) match {
-          case Some(stream) => Ok(Resource.fromInputStream(stream).byteArray).as("image/png")
-          case None => InternalServerError("unable to process the screenshot")
-        }
       }
-    }).getOrElse(Forbidden("url is required."))
+    }
+    val defaultFormat = Format(Play.configuration.getString("screenshot.format.default").getOrElse("1024x1024")).getOrElse({
+      Logger.warn("invalid screenshot.format.default conf. Fallback on 1024x1024")
+      Format(1024,1024)
+    })
+    val localAddressForbidden = Play.configuration.getBoolean("localAddress.forbidden").getOrElse(true)
+
+    def apply(f: (Request[_], String, Format) => Result) = Action { request =>
+      request.queryString.get("url").flatMap(_.headOption).map(url => {
+        val format = request.queryString.get("format").flatMap(_.headOption).flatMap(Format(_)).getOrElse(defaultFormat)
+        try {
+          val address = InetAddress.getByName(new URI(url).getHost())
+
+          if(address.isLoopbackAddress || localAddressForbidden && address.isSiteLocalAddress)
+            Forbidden("This address is forbidden.")
+          else if( autorizedFormats.length!=0 && !autorizedFormats.contains(format) )
+            Forbidden("format "+format+" unautorized.")
+          else
+            f(request, url, format)
+        }
+        catch {
+          case e:URISyntaxException => Forbidden("Invalid URL syntax")
+          case e:UnknownHostException => Forbidden("Invalid URL host")
+        }
+
+      }).getOrElse(Forbidden("url is required."))
+
+    }
   }
 
 }

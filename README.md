@@ -28,23 +28,39 @@ Screenshot an URL
 ### Response
 
 #### Success
-* Status: 200
+* Status: 200 Success
 * Content-Type: image/png
 
 #### Forbidden
 something is wrong in your parameters and not supported by the server
 
-* Status: 403
+* Status: 403 Forbidden
 
-#### InternalServerError
+#### The server was not able to finish processing the screenshot
+* Status: 503 Service Unavailable
+
+#### Internal Server Error
 something goes wrong during the screenshot processing
 
-* Status: 500
+* Status: 500 Internal Server Error
 
 
 ### Example
 
 `GET /screenshot.png?url=http://github.com&format=1024x1024`
+
+Precache an URL
+-----------------
+You can use a **HEAD** request to trigger the screenshot processing.
+The API is the same as the GET API.
+
+There is one new HTTP Status:
+
+### The URL is being process but not yet ready
+* Status: 202 Accepted
+
+### The URL is ready to get
+* Status: 200 Ok
 
 
 Example
@@ -56,10 +72,17 @@ Example
 Release Note
 ------------
 
+### v1.1
+  * add more Http responses
+  * add HEAD request for pinging the cache
+  * clean old cache files
+  * using Actor for queue of screenshot
+  * don't queue if a same request is waiting (but bind to it)
+
 ### v1.0.1
   * replaced the width and height by format
   * add autorized formats
-  * better way to forbid local addresses 
+  * better way to forbid local addresses
   * configurable expiration
 
 ### v1.0
