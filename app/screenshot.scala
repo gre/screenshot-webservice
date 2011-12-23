@@ -1,6 +1,7 @@
 package screenshot
 
 import java.io._
+import java.util.Date
 import sys.process._
 import scala.util.matching._
 import scala.collection.mutable.{ Map => MMap, HashMap => MHashMap }
@@ -33,7 +34,9 @@ object Format {
 
 /*** Outputs ***/
 
-case class Screenshot(filepath: String)
+case class Screenshot(filepath: String) {
+  lazy val headers = Screenshot.headersFor(this)
+}
 
 object Screenshot {
   val processingActor = actorOf[ScreenshotProcessing].start
@@ -41,6 +44,13 @@ object Screenshot {
   val TIMEOUT = 30000 millis
   private val waitingRequests: MMap[ScreenshotRequest, Promise[Option[Screenshot]]] = new MHashMap[ScreenshotRequest, Promise[Option[Screenshot]]]()
   
+  def headersFor(s:Screenshot) = {
+    val f = new File(s.filepath)
+    val lastModified = new Date(f.lastModified)
+    val expires = new Date(f.lastModified+ScreenshotCache.expirationSeconds*1000)
+    Array("Expires" -> expires.toGMTString, "Last-Modified" -> lastModified.toGMTString)
+  }
+
   def apply(params:ScreenshotRequest) : Promise[Option[Screenshot]] = {
     waitingRequests.get(params) getOrElse {
       val promise = (cacheActor.?(params)(timeout = TIMEOUT) ).mapTo[Option[Screenshot]].asPromise
@@ -49,7 +59,7 @@ object Screenshot {
       promise
     }
   }
-  
+
   implicit def writeableOf_Screenshot(implicit codec: Codec): Writeable[Screenshot] = 
     Writeable[Screenshot](s => Resource.fromInputStream(new FileInputStream(s.filepath)).byteArray )
 

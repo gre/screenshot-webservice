@@ -30,6 +30,8 @@ Screenshot an URL
 #### Success
 * Status: 200 Success
 * Content-Type: image/png
+* Expires: 23 Dec 2011 12:00:48 GMT
+* Last-Modified: 23 Dec 2011 11:30:48 GMT
 
 #### Forbidden
 something is wrong in your parameters and not supported by the server
@@ -65,6 +67,8 @@ The API is the same as the GET API.
 
 #### The URL is ready to get
 * Status: 200 Ok
+* Expires: 23 Dec 2011 12:00:48 GMT
+* Last-Modified: 23 Dec 2011 11:30:48 GMT
 
 
 Example
@@ -77,7 +81,7 @@ Release Note
 ------------
 
 ### v1.1
-  * add more Http responses
+  * add more Http responses and headers
   * add HEAD request for pinging the cache
   * clean old cache files
   * using Actor for queue of screenshot

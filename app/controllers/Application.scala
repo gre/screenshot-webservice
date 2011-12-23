@@ -14,21 +14,22 @@ import akka.dispatch._
 
 object Application extends Controller {
 
+  implicit def eitherResults(e:Either[Result, Result]) = e.fold(a=>a, b=>b)
+  implicit def promiseEitherResults(p:Promise[Either[Result, Result]]) : Promise[Result] = p.map(eitherResults(_))
+
   def touch = ScreenshotAction { (request, url, format) =>
     val promise = Screenshot(ScreenshotRequest(url, format)).map { s =>
-      if (s.isDefined) Ok else InternalServerError
+      if (s.isDefined) Ok.withHeaders(s.get.headers:_*) else InternalServerError
     }
-    AsyncResult(promise.orTimeout(Status(202), 1000).map { p =>
-      p.fold( a=>a, b=>b )
-    })
+    AsyncResult(promise.orTimeout(Status(202), 100))
   }
 
   def get = ScreenshotAction { (request, url, format) => 
     AsyncResult {
       Screenshot(ScreenshotRequest(url, format)) extend( _.value match {
         case Redeemed(screenshot) =>
-          screenshot map {
-            Ok(_)
+          screenshot map { s =>
+            Ok(s).withHeaders(s.headers:_*)
           } getOrElse {
             InternalServerError("unable to process the screenshot.")
           }
@@ -60,7 +61,6 @@ object Application extends Controller {
         val format = request.queryString.get("format").flatMap(_.headOption).flatMap(Format(_)).getOrElse(defaultFormat)
         try {
           val address = InetAddress.getByName(new URI(url).getHost())
-
           if(address.isLoopbackAddress || localAddressForbidden && address.isSiteLocalAddress)
             Forbidden("This address is forbidden.")
           else if( autorizedFormats.length!=0 && !autorizedFormats.contains(format) )

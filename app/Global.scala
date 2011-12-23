@@ -22,11 +22,8 @@ class CacheCleaner extends Actor {
     case "clean" => {
       Logger.debug("Cleaning old files...")
       val expiredDate = new Date().getTime() - ScreenshotCache.expirationSeconds*1000
-      val list = new File(ScreenshotProcessing.outputDir).listFiles.toList.filter(_.lastModified < expiredDate) map { file =>
-        Logger.debug( (new Date().getTime())+" "+file.lastModified+" "+file)
-        file.delete()
-      }
-      Logger.debug(list.length+" cleaned.")
+      val nbCleaned = new File(ScreenshotProcessing.outputDir).listFiles.toList.filter(_.lastModified < expiredDate).map(_.delete()).length
+      Logger.debug(nbCleaned+" cleaned.")
     }
   }
 }
