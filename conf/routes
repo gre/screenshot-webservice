@@ -2,8 +2,8 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET     /screenshot.png             controllers.Application.get()
-HEAD    /screenshot.png             controllers.Application.touch()
+GET     /screenshot.jpg             controllers.Application.get()
+HEAD    /screenshot.jpg             controllers.Application.touch()
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

@@ -6,8 +6,8 @@ import akka.actor.Actor
 import akka.actor.Actor._
 import akka.actor.Scheduler
 import java.util.concurrent.TimeUnit
-import java.io.File
 import java.util.Date
+import java.io.File
 import collection.JavaConversions._
 
 
@@ -35,10 +35,10 @@ object PhantomJSCheck {
 
   def apply() {
     Logger.debug("PhantomJS checking...")
-    Screenshot(
+    ScreenshotProcessing.process(
       ScreenshotRequest("http://google.com/", Format(1024, 1024))
-    ) value match {
-      case Redeemed(Some(_)) => Logger.debug("PhantomJS checked with success.")
+    ) match {
+      case Some(_) => Logger.debug("PhantomJS checked with success.")
       case o => {
         Logger.error("/!\\ PhantomJS check failed.")
         Logger.error("/!\\ Is phantomjs correctly installed on your system?")

@@ -1,7 +1,8 @@
 package screenshot
 
 import java.io._
-import java.util.Date
+import java.util.{ TimeZone, Date }
+import java.text.DateFormat
 import sys.process._
 import scala.util.matching._
 import scala.collection.mutable.{ Map => MMap, HashMap => MHashMap }
@@ -34,37 +35,41 @@ object Format {
 
 /*** Outputs ***/
 
-case class Screenshot(filepath: String) {
+case class Screenshot(filepath: String, date: Date) {
   lazy val headers = Screenshot.headersFor(this)
 }
 
 object Screenshot {
-  val processingActor = actorOf[ScreenshotProcessing].start
+  val processingActor = actorOf[ScreenshotProcessingBalancer].start
   val cacheActor = actorOf[ScreenshotCache].start
-  val TIMEOUT = 30000 millis
-  private val waitingRequests: MMap[ScreenshotRequest, Promise[Option[Screenshot]]] = new MHashMap[ScreenshotRequest, Promise[Option[Screenshot]]]()
-  
-  def headersFor(s:Screenshot) = {
-    val f = new File(s.filepath)
-    val lastModified = new Date(f.lastModified)
-    val expires = new Date(f.lastModified+ScreenshotCache.expirationSeconds*1000)
-    Array("Expires" -> expires.toGMTString, "Last-Modified" -> lastModified.toGMTString)
-  }
+
+  private val waitingRequests: MMap[ScreenshotRequest, Promise[Option[Screenshot]]] = 
+    new MHashMap[ScreenshotRequest, Promise[Option[Screenshot]]]()
 
   def apply(params:ScreenshotRequest) : Promise[Option[Screenshot]] = {
     waitingRequests.get(params) getOrElse {
-      val promise = (cacheActor.?(params)(timeout = TIMEOUT) ).mapTo[Option[Screenshot]].asPromise
+      val promise = cacheActor.?(params)(timeout = 120 seconds).
+                    mapTo[Option[Screenshot]].asPromise
       waitingRequests += ( (params, promise) )
       promise extend (p => waitingRequests -= params)
       promise
     }
   }
 
+  def headersFor(s:Screenshot) = {
+    val lastModified = s.date
+    val expires = new Date(s.date.getTime+ScreenshotCache.expirationSeconds*1000)
+    val formatter = DateFormat.getTimeInstance
+    formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
+    def toGMTString(d:Date):String = formatter.format(d)
+    Array("Expires"->toGMTString(expires), "Last-Modified"->toGMTString(lastModified))
+  }
+
   implicit def writeableOf_Screenshot(implicit codec: Codec): Writeable[Screenshot] = 
-    Writeable[Screenshot](s => Resource.fromInputStream(new FileInputStream(s.filepath)).byteArray )
+    Writeable[Screenshot](s => Resource.fromInputStream(new FileInputStream(s.filepath)).byteArray)
 
   implicit def contentTypeOf_Screenshot(implicit codec: Codec): ContentTypeOf[Screenshot] = 
-    ContentTypeOf[Screenshot](Some("image/png"))
+    ContentTypeOf[Screenshot](Some("image/jpg"))
 }
 
 
@@ -88,6 +93,22 @@ class ScreenshotCache extends Actor {
     case (params: ScreenshotRequest, screenshot: Screenshot) => {
       logger.debug("save to cache for "+params+" -> "+screenshot)
       set(params, screenshot)
+    }
+  }
+}
+
+class ScreenshotProcessingBalancer extends Actor {
+  val nbActors = Play.configuration.getInt("screenshot.actors.processing").getOrElse(2)
+  val actors = Range(0, nbActors).map(_=>actorOf[ScreenshotProcessing].start)
+  def logger = Logger("ScreenshotProcessingBalancer")
+
+  def receive = {
+    // find the most available actor : not sure about this first implementation (sounds like it's fair only if all screenshots takes the same time to render which is wrong, maybe actors should pull for new screenshot requests?)
+    case params: ScreenshotRequest => {
+      val actor = actors.sortWith((a:ActorRef, b:ActorRef) => 
+        a.dispatcher.mailboxSize(a) < b.dispatcher.mailboxSize(b)).head
+      logger.debug("balancing to "+actor+" with size "+actor.dispatcher.mailboxSize(actor))
+      actor forward params
     }
   }
 }
@@ -138,7 +159,7 @@ object ScreenshotProcessing {
     val output = getAbsolutePath(params)
     val process = Process(script+" "+params.url+" "+output+" "+params.format.width+" "+params.format.height)
     process.run(logger).exitValue() match {
-      case 0 => Some(Screenshot(output))
+      case 0 => Some(Screenshot(output, new Date()))
       case _ => None
     }
   }
@@ -150,7 +171,7 @@ object ScreenshotProcessing {
     f.getAbsolutePath
   }
 
-  def getAbsolutePath(params:ScreenshotRequest) = outputDir+"/"+md5(params.url)+"_"+params.format+".png"
+  def getAbsolutePath(params:ScreenshotRequest) = outputDir+"/"+md5(params.url)+"_"+params.format+".jpg"
 
   private def byteArrayToString(data: Array[Byte]) = {
      val hash = new java.math.BigInteger(1, data).toString(16)

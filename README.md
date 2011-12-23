@@ -18,7 +18,7 @@ The API
 Screenshot an URL
 -----------------
 
-`GET /screenshot.png`
+`GET /screenshot.jpg`
 
 ### Input
 
@@ -29,7 +29,7 @@ Screenshot an URL
 
 #### Success
 * Status: 200 Success
-* Content-Type: image/png
+* Content-Type: image/jpg
 * Expires: 23 Dec 2011 12:00:48 GMT
 * Last-Modified: 23 Dec 2011 11:30:48 GMT
 
@@ -53,7 +53,7 @@ something goes wrong during the screenshot processing
 
 ### Example
 
-`GET /screenshot.png?url=http://github.com&format=1024x1024`
+`GET /screenshot.jpg?url=http://github.com&format=1024x1024`
 
 Precache an URL
 -----------------
