@@ -72,7 +72,7 @@ object Screenshot {
 
 class ScreenshotCache extends Actor {
   import ScreenshotCache._
-  def logger = Logger(self.id)
+  def logger = Logger("ScreenshotCache")
 
   def receive = {
     // get
@@ -94,7 +94,7 @@ class ScreenshotCache extends Actor {
 
 class ScreenshotProcessing extends Actor {
   import ScreenshotProcessing._
-  def logger = Logger(self.id)
+  def logger = Logger("ScreenshotProcessing")
 
   def receive = {
     // process screenshot with phantomjs
