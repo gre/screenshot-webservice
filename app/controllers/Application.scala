@@ -61,7 +61,7 @@ object Application extends Controller {
         val format = request.queryString.get("format").flatMap(_.headOption).flatMap(Format(_)).getOrElse(defaultFormat)
         try {
           val address = InetAddress.getByName(new URI(url).getHost())
-          if(address.isLoopbackAddress || localAddressForbidden && address.isSiteLocalAddress)
+          if(localAddressForbidden && address.isLoopbackAddress)
             Forbidden("This address is forbidden.")
           else if( autorizedFormats.length!=0 && !autorizedFormats.contains(format) )
             Forbidden("format "+format+" unautorized.")
