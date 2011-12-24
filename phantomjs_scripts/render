@@ -2,4 +2,4 @@
 
 phantomjs=`which phantomjs`
 scriptjs=`dirname $0`/render.js
-$phantomjs --ignore-ssl-errors=yes $scriptjs $*
+DISPLAY=:0 $phantomjs --ignore-ssl-errors=yes $scriptjs $*
