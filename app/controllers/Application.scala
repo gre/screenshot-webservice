@@ -18,23 +18,25 @@ object Application extends Controller {
   implicit def promiseEitherResults(p:Promise[Either[Result, Result]]) : Promise[Result] = p.map(eitherResults(_))
 
   def touch = ScreenshotAction { (request, url, format) =>
-    val promise = Screenshot(ScreenshotRequest(url, format)).map { s =>
-      if (s.isDefined) Ok.withHeaders(s.get.headers:_*) else InternalServerError
-    }
+    val promise = Screenshot(ScreenshotRequest(url, format)).map(_ match { 
+      case Left(s) => Ok.withHeaders(s.headers:_*) 
+      case Right(e) => e.response
+      case _ => InternalServerError("Screenshot processing failed.")
+    })
     AsyncResult(promise.orTimeout(Status(202), 100))
   }
 
   def get = ScreenshotAction { (request, url, format) => 
     AsyncResult {
-      Screenshot(ScreenshotRequest(url, format)) extend( _.value match {
+      Screenshot(ScreenshotRequest(url, format)).extend( _.value match {
         case Redeemed(screenshot) =>
-          screenshot map { s =>
-            Screenshot.responseFor(s)(request)
-          } getOrElse {
-            InternalServerError("unable to process the screenshot.")
+          screenshot match { 
+            case Left(s) => Screenshot.responseFor(s)(request)
+            case Right(e) => e.response
+            case _ => InternalServerError("Screenshot processing failed.")
           }
         case Thrown(e) => e match {
-          case e:FutureTimeoutException => Status(503)("The server was not able to finish processing the screenshot")
+          case e:FutureTimeoutException => Status(503)("The server was not able to finish processing the screenshot.")
         }
       })
     }

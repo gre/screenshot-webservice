@@ -48,13 +48,13 @@ object Screenshot {
   val processingActor = actorOf[ScreenshotProcessingBalancer].start
   val cacheActor = actorOf[ScreenshotCache].start
 
-  private val waitingRequests: MMap[ScreenshotRequest, Promise[Option[Screenshot]]] = 
-    new MHashMap[ScreenshotRequest, Promise[Option[Screenshot]]]()
+  private val waitingRequests: MMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]] = 
+    new MHashMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]]()
 
-  def apply(params:ScreenshotRequest) : Promise[Option[Screenshot]] = {
+  def apply(params:ScreenshotRequest) : Promise[Either[Screenshot, ScreenshotError]] = {
     waitingRequests.get(params) getOrElse {
       val promise = cacheActor.?(params)(timeout = 120 seconds).
-                    mapTo[Option[Screenshot]].asPromise
+                    mapTo[Either[Screenshot, ScreenshotError]].asPromise
       waitingRequests += ( (params, promise) )
       promise extend (p => waitingRequests -= params)
       promise
@@ -100,6 +100,14 @@ object Screenshot {
     ContentTypeOf[Screenshot](Some("image/jpg"))
 }
 
+sealed case class ScreenshotError(message:String) {
+  lazy val response = InternalServerError(message)
+  override def toString = message
+}
+
+case object TimeoutError extends ScreenshotError("Resource was too long to respond.")
+case object NetworkError extends ScreenshotError("Resource unreachable.")
+case object UnknownError extends ScreenshotError("Resource screenshot processing failed.")
 
 /*** Actors ***/
 
@@ -112,15 +120,18 @@ class ScreenshotCache extends Actor {
     case params: ScreenshotRequest => {
       get(params) map {
         logger.debug("retrieve from cache for "+params)
-        self reply Some(_)
+        self reply _
       } getOrElse {
         Screenshot.processingActor forward params
       }
     }
-    // set
-    case (params: ScreenshotRequest, screenshot: Screenshot) => {
+    case (params: ScreenshotRequest, Left(screenshot:Screenshot)) => {
       logger.debug("save to cache for "+params+" -> "+screenshot)
       set(params, screenshot)
+    }
+    case (params: ScreenshotRequest, Right(e:ScreenshotError)) => {
+      logger.debug("error saved to cache for "+params+" -> "+e)
+      set(params, e)
     }
   }
 }
@@ -151,7 +162,7 @@ class ScreenshotProcessing extends Actor {
       logger.debug("processing... "+params)
       val screenshot = process(params) 
       logger.debug("done.")
-      screenshot map { Screenshot.cacheActor ! (params, _) } // send it to the cache actor
+      Screenshot.cacheActor ! (params, screenshot) // send it to the cache actor
       self reply screenshot
     }
   }
@@ -161,18 +172,32 @@ class ScreenshotProcessing extends Actor {
 
 object ScreenshotCache {
   lazy val cache = new BasicCache()
+  lazy val errorCache = new BasicCache()
   val expirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
+  val errorExpirationSeconds = Play.configuration.getInt("screenshot.error.cache.expiration").getOrElse(300)
 
-  def get(params:ScreenshotRequest) = cache.get[Screenshot](params.url).flatMap(screenshot => {
-    if (screenshot.file exists) 
-      Some(screenshot)
-    else {
-      clear(params)
-      None
-    }
-  })
-  def set(params:ScreenshotRequest, screenshot:Screenshot) = cache.set(params.url, screenshot, expirationSeconds)
-  def clear(params:ScreenshotRequest) = cache.set(params.url, null)
+  def get(params:ScreenshotRequest) : Option[Either[Screenshot, ScreenshotError]] = {
+    val s:Option[Either[Screenshot, ScreenshotError]] = cache.get[Screenshot](params.url).flatMap(screenshot => {
+      if (screenshot.file exists) 
+        Some(Left(screenshot))
+      else {
+        clear(params)
+        None
+      }
+    })
+    if (s.isDefined) s else errorCache.get[ScreenshotError](params.url).map(e => Right(e))
+  }
+
+  def set(params:ScreenshotRequest, screenshot:Screenshot) = 
+    cache.set(params.url, screenshot, expirationSeconds)
+
+  def set(params:ScreenshotRequest, e:ScreenshotError) =
+    errorCache.set(params.url, e, errorExpirationSeconds)
+
+  def clear(params:ScreenshotRequest) = {
+    errorCache.set(params.url, null)
+    cache.set(params.url, null)
+  }
 }
 
 object ScreenshotProcessing {
@@ -183,12 +208,20 @@ object ScreenshotProcessing {
     def buffer[T](f: => T): T = f
   }
 
-  def process(params:ScreenshotRequest) : Option[Screenshot] = {
+  object ExitCode {
+    val SUCCESS = 0;
+    val TIMEOUT = 2;
+    val OPEN_FAILED = 3;
+  }
+
+  def process(params:ScreenshotRequest) : Either[Screenshot, ScreenshotError] = {
     val output = getAbsolutePath(params)
     val process = Process(script+" "+params.url+" "+output+" "+params.format.width+" "+params.format.height)
     process.run(logger).exitValue() match {
-      case 0 => Some(Screenshot(output, new Date()))
-      case _ => None
+      case ExitCode.SUCCESS => Left(Screenshot(output, new Date()))
+      case ExitCode.TIMEOUT => Right(TimeoutError)
+      case ExitCode.OPEN_FAILED => Right(NetworkError)
+      case _ => Right(UnknownError)
     }
   }
 

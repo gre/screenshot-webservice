@@ -38,9 +38,9 @@ object PhantomJSCheck {
     ScreenshotProcessing.process(
       ScreenshotRequest("http://google.com/", Format(1024, 1024))
     ) match {
-      case Some(_) => Logger.debug("PhantomJS checked with success.")
-      case o => {
-        Logger.error("/!\\ PhantomJS check failed.")
+      case Left(_) => Logger.debug("PhantomJS checked with success.")
+      case Right(e) => {
+        Logger.error("/!\\ PhantomJS check failed: "+e)
         Logger.error("/!\\ Is phantomjs correctly installed on your system?")
         Logger.error("/!\\ For more information please refer to phantomjs install documentation.")
       }
