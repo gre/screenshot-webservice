@@ -29,7 +29,7 @@ object Application extends Controller {
       Screenshot(ScreenshotRequest(url, format)) extend( _.value match {
         case Redeemed(screenshot) =>
           screenshot map { s =>
-            Ok(s).withHeaders(s.headers:_*)
+            Screenshot.responseFor(s)(request)
           } getOrElse {
             InternalServerError("unable to process the screenshot.")
           }

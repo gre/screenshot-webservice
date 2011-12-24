@@ -1,14 +1,17 @@
 package screenshot
 
 import java.io._
-import java.util.{ TimeZone, Date }
-import java.text.DateFormat
+import java.util.{ SimpleTimeZone, Date }
+import java.text.SimpleDateFormat
 import sys.process._
 import scala.util.matching._
 import scala.collection.mutable.{ Map => MMap, HashMap => MHashMap }
 import scalax.io.{ Resource }
 import play.api._
 import play.api.mvc._
+import play.api.mvc.Results._
+import play.api.libs.Codecs
+import play.api.http.HeaderNames._
 import play.api.Play.current
 import play.api.libs.concurrent._
 import play.api.cache.BasicCache
@@ -37,6 +40,8 @@ object Format {
 
 case class Screenshot(filepath: String, date: Date) {
   lazy val headers = Screenshot.headersFor(this)
+  lazy val file = new File(filepath)
+  lazy val data = Resource.fromInputStream(new FileInputStream(file)).byteArray
 }
 
 object Screenshot {
@@ -56,17 +61,40 @@ object Screenshot {
     }
   }
 
+  def responseFor(s:Screenshot)(implicit request:Request[_]) : SimpleResult[_] = {
+    request.headers.get(IF_NONE_MATCH).filter(_ == etagFor(s)).map(_ => NotModified).getOrElse {
+      Ok(s)
+    }.withHeaders(s.headers:_*)
+  }
+
   def headersFor(s:Screenshot) = {
     val lastModified = s.date
     val expires = new Date(s.date.getTime+ScreenshotCache.expirationSeconds*1000)
-    val formatter = DateFormat.getTimeInstance
-    formatter.setTimeZone(TimeZone.getTimeZone("GMT"))
-    def toGMTString(d:Date):String = formatter.format(d)
-    Array("Expires"->toGMTString(expires), "Last-Modified"->toGMTString(lastModified))
+    def toGMTString(d:Date):String = {
+      val sdf = new SimpleDateFormat()
+      sdf.setTimeZone(new SimpleTimeZone(0, "GMT"))
+      sdf.applyPattern("dd MMM yyyy HH:mm:ss z")
+      sdf.format(d)
+    }
+
+    Array(
+      EXPIRES -> toGMTString(expires), 
+      LAST_MODIFIED -> toGMTString(lastModified), 
+      ETAG -> etagFor(s)
+    )
+  }
+
+  private val etags = scala.collection.mutable.HashMap.empty[Screenshot, String]
+  private def computeETag(data: Array[Byte]) = Codecs.sha1(data)
+  def etagFor(s: Screenshot) = {
+    etags.get(s).getOrElse {
+      etags.put(s, computeETag(s.data))
+      etags(s)
+    }
   }
 
   implicit def writeableOf_Screenshot(implicit codec: Codec): Writeable[Screenshot] = 
-    Writeable[Screenshot](s => Resource.fromInputStream(new FileInputStream(s.filepath)).byteArray)
+    Writeable[Screenshot](s => s.data)
 
   implicit def contentTypeOf_Screenshot(implicit codec: Codec): ContentTypeOf[Screenshot] = 
     ContentTypeOf[Screenshot](Some("image/jpg"))
@@ -136,8 +164,8 @@ object ScreenshotCache {
   val expirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
 
   def get(params:ScreenshotRequest) = cache.get[Screenshot](params.url).flatMap(screenshot => {
-    if (new File(screenshot.filepath) exists) 
-      Some(screenshot) 
+    if (screenshot.file exists) 
+      Some(screenshot)
     else {
       clear(params)
       None
