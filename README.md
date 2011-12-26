@@ -18,29 +18,34 @@ The API
 Screenshot an URL
 -----------------
 
-`GET /screenshot.jpg`
+`GET /screenshot.`**`:format`**
 
 ### Input
 
+* `format` *Required (url)* : **string** (example: jpg, png, ...) as defined in the conf
 * `url` *Required* : **string**
-* `format` *Optional* : ***{width}*x*{height}*** (example: 1024x1024)
+* `size` *Optional* : ***{width}*x*{height}*** (example: 1024x1024) as defined in the conf
 
 ### Response
 
 #### Success
-* Status: 200 Success
+**200 Success**
 * Content-Type: image/jpg
 * Expires: 23 Dec 2011 12:00:48 GMT
 * Last-Modified: 23 Dec 2011 11:30:48 GMT
+* Etag: 0d21b5bdca5db7fe8ae17b88f6dabb66167f2721
+* Content-Length: 478349
+
+*[image binary in the body]*
 
 #### Forbidden
 something is wrong in your parameters and not supported by the server
 
-* Status: 403 Forbidden
+**403 Forbidden**
 
 #### The server was not able to finish processing the screenshot
 
-* Status: 503 Service Unavailable
+**503 Service Unavailable**
 
 To avoid this problem, prefer using a HEAD request before and ensure the resource is ready.
 
@@ -48,12 +53,12 @@ To avoid this problem, prefer using a HEAD request before and ensure the resourc
 #### Internal Server Error
 something goes wrong during the screenshot processing
 
-* Status: 500 Internal Server Error
+**500 Internal Server Error**
 
 
 ### Example
 
-`GET /screenshot.jpg?url=http://github.com&format=1024x1024`
+`GET /screenshot.jpg?url=http://github.com&size=1024x1024`
 
 Precache an URL
 -----------------
@@ -63,13 +68,15 @@ The API is the same as the GET API.
 ### Additional responses
 
 #### The URL is being process but not yet ready
-* Status: 202 Accepted
+HTTP/1.1 **202 Accepted**
 
 #### The URL is ready to get
-* Status: 200 Ok
-* Expires: 23 Dec 2011 12:00:48 GMT
-* Last-Modified: 23 Dec 2011 11:30:48 GMT
-
+HTTP/1.1 **200 OK**
+* Content-Type: image/png
+* Expires: 26 Dec 2011 11:28:18 GMT
+* Last-Modified: 26 Dec 2011 10:58:18 GMT
+* Etag: f5b12d7e242ff0ad36e18bd842bb74b161d4cf58
+* Content-Length: 478349
 
 Example
 -------
@@ -80,6 +87,10 @@ Example
 Release Note
 ------------
 
+### v1.1.1
+  * add configurable format
+  * perf improvments
+
 ### v1.1
   * add more Http responses and headers
   * add HEAD request for pinging the cache
@@ -88,8 +99,8 @@ Release Note
   * don't queue if a same request is waiting (but bind to it)
 
 ### v1.0.1
-  * replaced the width and height by format
-  * add autorized formats
+  * replaced the width and height by size
+  * add autorized sizes
   * better way to forbid local addresses
   * configurable expiration
 

@@ -36,7 +36,7 @@ object PhantomJSCheck {
   def apply() {
     Logger.debug("PhantomJS checking...")
     ScreenshotProcessing.process(
-      ScreenshotRequest("http://google.com/", Format(1024, 1024))
+      ScreenshotRequest("http://google.com/", "jpg", Size(1024, 1024))
     ) match {
       case Left(_) => Logger.debug("PhantomJS checked with success.")
       case Right(e) => {

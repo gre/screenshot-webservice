@@ -23,15 +23,15 @@ import akka.util.duration._
 
 /*** Inputs ***/
 
-case class ScreenshotRequest(url: String, format: Format)
+case class ScreenshotRequest(url: String, format:String, size: Size)
 
-case class Format(width:Int, height:Int) {
+case class Size(width:Int, height:Int) {
   override def toString = width+"x"+height
 }
 
-object Format {
+object Size {
   def apply(s:String) = new Regex("([0-9]+)x([0-9]+)").unapplySeq(s).flatMap(l => l.map(_.toInt) match {
-    case List(width, height) => Some(new Format(width, height))
+    case List(width, height) => Some(new Size(width, height))
     case _ => None
   })
 }
@@ -42,6 +42,9 @@ case class Screenshot(filepath: String, date: Date) {
   lazy val headers = Screenshot.headersFor(this)
   lazy val file = new File(filepath)
   lazy val data = Resource.fromInputStream(new FileInputStream(file)).byteArray
+  lazy val ext = filepath substring (1 + filepath lastIndexOf '.')
+  implicit def contentTypeOf_Screenshot(implicit codec: Codec): ContentTypeOf[Screenshot] = 
+    ContentTypeOf[Screenshot](Some("image/"+ext))
 }
 
 object Screenshot {
@@ -62,6 +65,7 @@ object Screenshot {
   }
 
   def responseFor(s:Screenshot)(implicit request:Request[_]) : SimpleResult[_] = {
+    import s.contentTypeOf_Screenshot
     request.headers.get(IF_NONE_MATCH).filter(_ == etagFor(s)).map(_ => NotModified).getOrElse {
       Ok(s)
     }.withHeaders(s.headers:_*)
@@ -95,9 +99,6 @@ object Screenshot {
 
   implicit def writeableOf_Screenshot(implicit codec: Codec): Writeable[Screenshot] = 
     Writeable[Screenshot](s => s.data)
-
-  implicit def contentTypeOf_Screenshot(implicit codec: Codec): ContentTypeOf[Screenshot] = 
-    ContentTypeOf[Screenshot](Some("image/jpg"))
 }
 
 sealed case class ScreenshotError(message:String) {
@@ -105,9 +106,9 @@ sealed case class ScreenshotError(message:String) {
   override def toString = message
 }
 
-case object TimeoutError extends ScreenshotError("Resource was too long to respond.")
-case object NetworkError extends ScreenshotError("Resource unreachable.")
-case object UnknownError extends ScreenshotError("Resource screenshot processing failed.")
+object TimeoutError extends ScreenshotError("Resource was too long to respond.")
+object NetworkError extends ScreenshotError("Resource unreachable.")
+object UnknownError extends ScreenshotError("Resource screenshot processing failed.")
 
 /*** Actors ***/
 
@@ -125,6 +126,7 @@ class ScreenshotCache extends Actor {
         Screenshot.processingActor forward params
       }
     }
+    // set
     case (params: ScreenshotRequest, Left(screenshot:Screenshot)) => {
       logger.debug("save to cache for "+params+" -> "+screenshot)
       set(params, screenshot)
@@ -177,7 +179,7 @@ object ScreenshotCache {
   val errorExpirationSeconds = Play.configuration.getInt("screenshot.error.cache.expiration").getOrElse(300)
 
   def get(params:ScreenshotRequest) : Option[Either[Screenshot, ScreenshotError]] = {
-    val s:Option[Either[Screenshot, ScreenshotError]] = cache.get[Screenshot](params.url).flatMap(screenshot => {
+    val s:Option[Either[Screenshot, ScreenshotError]] = cache.get[Screenshot](params.toString).flatMap(screenshot => {
       if (screenshot.file exists) 
         Some(Left(screenshot))
       else {
@@ -185,18 +187,18 @@ object ScreenshotCache {
         None
       }
     })
-    if (s.isDefined) s else errorCache.get[ScreenshotError](params.url).map(e => Right(e))
+    if (s.isDefined) s else errorCache.get[ScreenshotError](params.toString).map(e => Right(e))
   }
 
   def set(params:ScreenshotRequest, screenshot:Screenshot) = 
-    cache.set(params.url, screenshot, expirationSeconds)
+    cache.set(params.toString, screenshot, expirationSeconds)
 
   def set(params:ScreenshotRequest, e:ScreenshotError) =
-    errorCache.set(params.url, e, errorExpirationSeconds)
+    errorCache.set(params.toString, e, errorExpirationSeconds)
 
   def clear(params:ScreenshotRequest) = {
-    errorCache.set(params.url, null)
-    cache.set(params.url, null)
+    errorCache.set(params.toString, null)
+    cache.set(params.toString, null)
   }
 }
 
@@ -216,7 +218,7 @@ object ScreenshotProcessing {
 
   def process(params:ScreenshotRequest) : Either[Screenshot, ScreenshotError] = {
     val output = getAbsolutePath(params)
-    val process = Process(script+" "+params.url+" "+output+" "+params.format.width+" "+params.format.height)
+    val process = Process(script+" "+params.url+" "+output+" "+params.size.width+" "+params.size.height)
     process.run(logger).exitValue() match {
       case ExitCode.SUCCESS => Left(Screenshot(output, new Date()))
       case ExitCode.TIMEOUT => Right(TimeoutError)
@@ -232,7 +234,7 @@ object ScreenshotProcessing {
     f.getAbsolutePath
   }
 
-  def getAbsolutePath(params:ScreenshotRequest) = outputDir+"/"+md5(params.url)+"_"+params.format+".jpg"
+  def getAbsolutePath(params:ScreenshotRequest) = outputDir+"/"+md5(params.url)+"_"+params.size+"."+params.format
 
   private def byteArrayToString(data: Array[Byte]) = {
      val hash = new java.math.BigInteger(1, data).toString(16)
