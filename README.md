@@ -41,21 +41,25 @@ HTTP/1.1 **200 Success**
 *[image binary in the body]*
 
 #### Forbidden
+
 something is wrong in your parameters and not supported by the server
 
-**403 Forbidden**
+HTTP/1.1 **403 Forbidden**
 
-#### The server was not able to finish processing the screenshot
+#### Service Unavailable
 
-**503 Service Unavailable**
+The server was not able to finish processing the screenshot
+
+HTTP/1.1 **503 Service Unavailable**
 
 To avoid this problem, prefer using a HEAD request before and ensure the resource is ready.
 
 
 #### Internal Server Error
+
 something goes wrong during the screenshot processing
 
-**500 Internal Server Error**
+HTTP/1.1 **500 Internal Server Error**
 
 ### Example
 
