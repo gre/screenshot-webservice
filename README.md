@@ -28,9 +28,7 @@ Screenshot an URL
 
 ### Response
 
-#### Success
-
-HTTP/1.1 **200 Success**
+#### 200 Success
 
 * Content-Type: image/jpg
 * Expires: 23 Dec 2011 12:00:48 GMT
@@ -40,26 +38,19 @@ HTTP/1.1 **200 Success**
 
 *[image binary in the body]*
 
-#### Forbidden
+#### 403 Forbidden
 
 something is wrong in your parameters and not supported by the server
 
-HTTP/1.1 **403 Forbidden**
-
-#### Service Unavailable
+#### 503 Service Unavailable
 
 The server was not able to finish processing the screenshot
 
-HTTP/1.1 **503 Service Unavailable**
-
 To avoid this problem, prefer using a HEAD request before and ensure the resource is ready.
 
-
-#### Internal Server Error
+#### 500 Internal Server Error
 
 something goes wrong during the screenshot processing
-
-HTTP/1.1 **500 Internal Server Error**
 
 ### Example
 
@@ -68,23 +59,24 @@ HTTP/1.1 **500 Internal Server Error**
 Precache an URL
 -----------------
 You can use a **HEAD** request to trigger the screenshot processing.
-The API is the same as the GET API.
+The API and responses are the same as the GET API.
+Instead of waiting the screenshot resource to be ready, the web service returns a 202 http code if the resource is still processing.
 
 ### Additional responses
 
-#### The URL is being process but not yet ready
+#### 202 Accepted
 
-HTTP/1.1 **202 Accepted**
+The URL is being process but not yet ready
 
-#### The URL is ready to get
-
-HTTP/1.1 **200 OK**
+#### 200 OK
 
 * Content-Type: image/png
 * Expires: 26 Dec 2011 11:28:18 GMT
 * Last-Modified: 26 Dec 2011 10:58:18 GMT
 * Etag: f5b12d7e242ff0ad36e18bd842bb74b161d4cf58
 * Content-Length: 478349
+
+The URL is ready to get
 
 Example
 -------
