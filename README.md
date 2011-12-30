@@ -18,7 +18,7 @@ The API
 Screenshot an URL
 -----------------
 
-`GET /screenshot.`**`:format`**
+`GET /screenshot.{format}`
 
 ### Input
 
@@ -29,7 +29,9 @@ Screenshot an URL
 ### Response
 
 #### Success
-**200 Success**
+
+HTTP/1.1 **200 Success**
+
 * Content-Type: image/jpg
 * Expires: 23 Dec 2011 12:00:48 GMT
 * Last-Modified: 23 Dec 2011 11:30:48 GMT
@@ -55,7 +57,6 @@ something goes wrong during the screenshot processing
 
 **500 Internal Server Error**
 
-
 ### Example
 
 `GET /screenshot.jpg?url=http://github.com&size=1024x1024`
@@ -68,10 +69,13 @@ The API is the same as the GET API.
 ### Additional responses
 
 #### The URL is being process but not yet ready
+
 HTTP/1.1 **202 Accepted**
 
 #### The URL is ready to get
+
 HTTP/1.1 **200 OK**
+
 * Content-Type: image/png
 * Expires: 26 Dec 2011 11:28:18 GMT
 * Last-Modified: 26 Dec 2011 10:58:18 GMT
