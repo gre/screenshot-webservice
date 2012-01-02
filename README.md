@@ -3,15 +3,16 @@ Screenshot Webservice
 
 Screenshot Webservice is an open-source **REST web service** to perform **web page screenshots**.
 
-* **PhantomJS** is used for rendering pages.
-* **Play2 framework** is used for everything else:
-  * Caching
-  * Configuration (autorized formats and sizes, ...)
-  * Handling a multi-processing queue
-  * REST
-    * GET and HEAD supported
-    * HTTP Status Code for easily identifying failures
-    * HTTP Headers
+**PhantomJS** is used for rendering pages.
+
+**Play2 framework** is used for everything else:
+* Caching
+* Configuration (autorized formats and sizes, ...)
+* Handling a multi-processing screenshot requests queue
+* REST
+  * GET and HEAD supported
+  * HTTP Status Code for easily identifying failures
+  * HTTP Headers
 
 Installation
 ============
