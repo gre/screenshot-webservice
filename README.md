@@ -34,8 +34,8 @@ Run it
 ------
 ```
 $ cd screenshot-webservice/
-$ ~/Play20/play   # fix the path for your Play20 installtion
-$ run             # (or start then C-D), you can also provide a port number
+$ ~/Play20/play                   # fix the path for your Play20 installtion
+[screenshot-webservice] $ run     # (or start then C-D), you can also provide a port number
 ```
 Now go to http://localhost:9000/
 
