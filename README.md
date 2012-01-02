@@ -37,14 +37,16 @@ $ cd screenshot-webservice/
 $ ~/Play20/play                   # fix the path for your Play20 installtion
 [screenshot-webservice] $ run     # (or start then C-D), you can also provide a port number
 ```
-Now go to http://localhost:9000/
+Now go to `http://localhost:9000/`
 
 Configuration
 =============
 
 You can configure your instance with the `conf/application.conf` file.
 
-Read it for more information. Properties are commented.
+You can also edit the `/` page by editing the `conf/index.html` file.
+
+Read it for more information, every property is commented.
 
 The API
 =======
@@ -146,7 +148,7 @@ Licence
 
 This software is licensed under the Apache 2 license, quoted below.
 
-Copyright 2011 Gaëtan Renaudeau (http://gaetanrenaudeau.fr).
+Copyright 2011-2012 Gaëtan Renaudeau (http://gaetanrenaudeau.fr).
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this project except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
 

@@ -1,0 +1,61 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Screenshot Webservice</title>
+  <link href='http://fonts.googleapis.com/css?family=Ubuntu' rel='stylesheet' type='text/css'>
+  <style>
+body {
+  font-family: Ubuntu;
+  color: #333;
+  background-color: #eee;
+}
+#wrapper {
+  width: 800px;
+  margin: 0 auto;
+}
+a {
+  color: #6a4;
+}
+hgroup {
+  margin-bottom: 50px;
+}
+footer p.screenshot-webservice-copyright {
+  margin-top: 50px;
+  padding: 5px;
+  background: #fff;
+  opacity: .5;
+}
+  </style>
+</head>
+<body>
+
+<div id="wrapper">
+  <hgroup>
+    <h1>Screenshot Webservice</h1>
+    <h2><a href="https://github.com/gre/screenshot-webservice">An open-source REST web service to perform web page screenshot powered by <em>Play! framework</em> and <em>PhantomJS</em>.</a></h2>
+  </hgroup>
+
+  <article>
+    <section>
+      <h3>Try it out</h3>
+      <ul>
+        <li>
+          GET a screenshot of github.com: <a href="/screenshot.png?url=http://github.com/&size=1024x1024">/screenshot.png?url=http://github.com/&size=1024x1024</a>
+        </li>
+        <li>
+          process it with a HEAD: <code>curl -I http://localhost:9000/screenshot.png?url=http://github.com/</code>
+        </li>
+      </ul>
+    </section>
+  </article>
+
+  <footer>
+  <!-- Please keep this lines -->
+  <p class="screenshot-webservice-copyright">released under Apache 2 license, made by <a href="http://gaetanrenaudeau.fr">Gaëtan Renaudeau</a> in 2012.</p>
+  <!-- thanks! -->
+  </footer>
+</div>
+
+</body>
+</html>
