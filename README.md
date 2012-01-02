@@ -6,6 +6,7 @@ Screenshot Webservice is an open-source **REST web service** to perform **web pa
 **PhantomJS** is used for rendering pages.
 
 **Play2 framework** is used for everything else:
+
 * Caching
 * Configuration (autorized formats and sizes, ...)
 * Handling a multi-processing screenshot requests queue
