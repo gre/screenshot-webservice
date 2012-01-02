@@ -3,14 +3,46 @@ Screenshot Webservice
 
 Screenshot Webservice is an open-source **REST web service** to perform **web page screenshots**.
 
-It use **PhantomJS** for rendering behind a **Play2 framework** application for handling caching.
+* **PhantomJS** is used for rendering pages.
+* **Play2 framework** is used for everything else:
+  * Caching
+  * Configuration (autorized formats and sizes, ...)
+  * Handling a multi-processing queue
+  * REST
+    * GET and HEAD supported
+    * HTTP Status Code for easily identifying failures
+    * HTTP Headers
 
-Requirement
------------
+Installation
+============
+
+Install dependencies
+--------------------
 
 * **Play20** *HEAD* to start the application (or only java if you deploy it)
+  * See https://github.com/playframework/Play20
 * `phantomjs` installed in the system
+  * See http://www.phantomjs.org/
 
+Download it
+-----------
+pull it or download it from Github.
+
+Run it
+------
+```
+$ cd screenshot-webservice/
+$ ~/Play20/play   # fix the path for your Play20 installtion
+$ run             # (or start then C-D), you can also provide a port number
+```
+Now go to http://localhost:9000/
+
+Configuration
+=============
+
+You can configure your instance with the `conf/application.conf` file.
+
+Read it for more information. Properties are commented.
 
 The API
 =======
