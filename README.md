@@ -23,7 +23,7 @@ Install dependencies
 
 * **Play20** *HEAD* to start the application (or only java if you deploy it)
   * See https://github.com/playframework/Play20
-* `phantomjs` installed in the system
+* `phantomjs` 1.4.0(+) installed in the system
   * See http://www.phantomjs.org/
 
 Download it

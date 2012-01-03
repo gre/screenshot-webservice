@@ -38,7 +38,7 @@ object Size {
 
 /*** Outputs ***/
 
-case class Screenshot(filepath: String, date: Date) {
+case class Screenshot(filepath: String, date: Date, expiration: Int) {
   lazy val headers = Screenshot.headersFor(this)
   lazy val file = new File(filepath)
   lazy val data = Resource.fromInputStream(new FileInputStream(file)).byteArray
@@ -73,7 +73,7 @@ object Screenshot {
 
   def headersFor(s:Screenshot) = {
     val lastModified = s.date
-    val expires = new Date(s.date.getTime+ScreenshotCache.expirationSeconds*1000)
+    val expires = new Date(s.date.getTime+s.expiration*1000)
     def toGMTString(d:Date):String = {
       val sdf = new SimpleDateFormat()
       sdf.setTimeZone(new SimpleTimeZone(0, "GMT"))
@@ -146,6 +146,7 @@ class ScreenshotProcessingBalancer extends Actor {
   def receive = {
     // find the most available actor : not sure about this first implementation (sounds like it's fair only if all screenshots takes the same time to render which is wrong, maybe actors should pull for new screenshot requests?)
     case params: ScreenshotRequest => {
+      logger.debug("current load: "+actors.map(_.dispatcher.mailboxSize(_)).mkString("[", ", ", "]"));
       val actor = actors.sortWith((a:ActorRef, b:ActorRef) => 
         a.dispatcher.mailboxSize(a) < b.dispatcher.mailboxSize(b)).head
       logger.debug("balancing to "+actor+" with size "+actor.dispatcher.mailboxSize(actor))
@@ -175,7 +176,8 @@ class ScreenshotProcessing extends Actor {
 object ScreenshotCache {
   lazy val cache = new BasicCache()
   lazy val errorCache = new BasicCache()
-  val expirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
+  val constExpirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
+  def expirationSeconds() = (constExpirationSeconds * (0.95 + 0.1*Math.random)).toInt // +- 5% of randomness
   val errorExpirationSeconds = Play.configuration.getInt("screenshot.error.cache.expiration").getOrElse(300)
 
   def get(params:ScreenshotRequest) : Option[Either[Screenshot, ScreenshotError]] = {
@@ -190,8 +192,11 @@ object ScreenshotCache {
     if (s.isDefined) s else errorCache.get[ScreenshotError](params.toString).map(e => Right(e))
   }
 
-  def set(params:ScreenshotRequest, screenshot:Screenshot) = 
-    cache.set(params.toString, screenshot, expirationSeconds)
+  def set(params:ScreenshotRequest, screenshot:Screenshot) = {
+    val expiration = expirationSeconds()
+    val s = screenshot.copy(expiration=expiration)
+    cache.set(params.toString, s, expiration)
+  }
 
   def set(params:ScreenshotRequest, e:ScreenshotError) =
     errorCache.set(params.toString, e, errorExpirationSeconds)
@@ -220,7 +225,7 @@ object ScreenshotProcessing {
     val output = getAbsolutePath(params)
     val process = Process(script+" "+params.url+" "+output+" "+params.size.width+" "+params.size.height)
     process.run(logger).exitValue() match {
-      case ExitCode.SUCCESS => Left(Screenshot(output, new Date()))
+      case ExitCode.SUCCESS => Left(Screenshot(output, new Date(), 0))
       case ExitCode.TIMEOUT => Right(TimeoutError)
       case ExitCode.OPEN_FAILED => Right(NetworkError)
       case _ => Right(UnknownError)
