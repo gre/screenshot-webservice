@@ -146,7 +146,7 @@ class ScreenshotProcessingBalancer extends Actor {
   def receive = {
     // find the most available actor : not sure about this first implementation (sounds like it's fair only if all screenshots takes the same time to render which is wrong, maybe actors should pull for new screenshot requests?)
     case params: ScreenshotRequest => {
-      logger.debug("current load: "+actors.map(_.dispatcher.mailboxSize(_)).mkString("[", ", ", "]"));
+      logger.debug("current load: "+actors.map(a => a.dispatcher.mailboxSize(a)).mkString("[", ", ", "]"));
       val actor = actors.sortWith((a:ActorRef, b:ActorRef) => 
         a.dispatcher.mailboxSize(a) < b.dispatcher.mailboxSize(b)).head
       logger.debug("balancing to "+actor+" with size "+actor.dispatcher.mailboxSize(actor))
