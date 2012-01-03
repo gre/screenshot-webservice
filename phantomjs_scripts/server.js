@@ -19,16 +19,18 @@ function renderUrlToFile(url, file, width, height, success, error) {
   page.viewportSize = { width: width, height: height };
   page.clipRect = { top: 0, left: 0, width: width, height: height };
   page.settings.userAgent = "PhantomJS/"+phantom_version+" screenshot-webservice/"+version;
-  var skipped = false;
+  var finished = false;
 
   setTimeout(function(){
-    skipped = true;
+    if(finished) return;
+    finished = true;
     console.error("Timeout reached ("+TIMEOUT+"ms).");
     error("timeout");
   }, TIMEOUT);
 
   page.open(url, function(status){
-    if(skipped) return;
+    if(finished) return;
+    finished = true;
     if(status !== "success") {
       console.log("Unable to render '"+url+"' ("+status+")");
       error("status", status);
@@ -56,15 +58,17 @@ function notFound(r) {
 
 service = server.listen(PORT, function (request, response) {
   console.debug(request.method+" "+request.url);
-  var m = regexp.match(request.url);
+  var m = regexp.exec(request.url);
   if(m && m[1]) {
     var params = queryString(m[1]);
     if(params.url && params.output) {
       try {
       renderUrlToFile(params.url, params.output, params.width||width, params.height||height, function(url, file){
+        return;
         response.statusCode = 200;
         response.write('{ "url": "'+url+'", "output": "'+output+'" }');
       }, function(error){
+        return;
         if(error == "timeout")
         response.statusCode = 503;
         else
@@ -76,6 +80,10 @@ service = server.listen(PORT, function (request, response) {
         response.statusCode = 500;
         response.write('{ "error": "'+e+'" }');
       }
+      response.write("toto");
     } else notFound(response);
   } else notFound(response);
 });
+
+console.log("Listening to port "+PORT+"...");
+
