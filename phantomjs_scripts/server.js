@@ -64,11 +64,9 @@ service = server.listen(PORT, function (request, response) {
     if(params.url && params.output) {
       try {
       renderUrlToFile(params.url, params.output, params.width||width, params.height||height, function(url, file){
-        return;
         response.statusCode = 200;
         response.write('{ "url": "'+url+'", "output": "'+output+'" }');
       }, function(error){
-        return;
         if(error == "timeout")
         response.statusCode = 503;
         else
@@ -80,7 +78,6 @@ service = server.listen(PORT, function (request, response) {
         response.statusCode = 500;
         response.write('{ "error": "'+e+'" }');
       }
-      response.write("toto");
     } else notFound(response);
   } else notFound(response);
 });
