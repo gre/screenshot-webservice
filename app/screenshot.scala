@@ -11,11 +11,12 @@ import play.api._
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.libs.Codecs
+import play.api.http._
 import play.api.http.HeaderNames._
 import play.api.Play.current
 import play.api.libs.concurrent._
-import play.api.cache.BasicCache
-import play.api.libs.akka._
+import play.api.cache.Cache
+//import play.api.libs.akka._
 import akka.actor._
 import Actor._
 import akka.util.duration._
@@ -48,17 +49,22 @@ case class Screenshot(filepath: String, date: Date, expiration: Int) {
 }
 
 object Screenshot {
-  val processingActor = actorOf[ScreenshotProcessingBalancer].start
-  val cacheActor = actorOf[ScreenshotCache].start
+  var system = ActorSystem("screenshot")
+  val processingActor = system.actorOf(Props[ScreenshotProcessingBalancer])
+  val cacheActor = system.actorOf(Props[ScreenshotCache])
 
   private val waitingRequests: MMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]] = 
     new MHashMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]]()
 
   def apply(params:ScreenshotRequest) : Promise[Either[Screenshot, ScreenshotError]] = {
     waitingRequests.get(params) getOrElse {
-      val promise = cacheActor.?(params)(timeout = 120 seconds).
+      val promise = Promise()
+      /*
+      val promise = cacheActor.!(params)(timeout = 120 seconds).
                     mapTo[Either[Screenshot, ScreenshotError]].asPromise
+      */
       waitingRequests += ( (params, promise) )
+      cacheActor ! (params, promise)
       promise extend (p => waitingRequests -= params)
       promise
     }
@@ -121,7 +127,7 @@ class ScreenshotCache extends Actor {
     case params: ScreenshotRequest => {
       get(params) map {
         logger.debug("retrieve from cache for "+params)
-        self reply _
+        sender ! _
       } getOrElse {
         Screenshot.processingActor forward params
       }
@@ -140,16 +146,19 @@ class ScreenshotCache extends Actor {
 
 class ScreenshotProcessingBalancer extends Actor {
   val nbActors = Play.configuration.getInt("screenshot.actors.processing").getOrElse(2)
-  val actors = Range(0, nbActors).map(_=>actorOf[ScreenshotProcessing].start)
+  val actors = Range(0, nbActors).map(_ => Screenshot.system.actorOf(Props[ScreenshotProcessing]))
   def logger = Logger("ScreenshotProcessingBalancer")
 
   def receive = {
     // find the most available actor : not sure about this first implementation (sounds like it's fair only if all screenshots takes the same time to render which is wrong, maybe actors should pull for new screenshot requests?)
     case params: ScreenshotRequest => {
+      /*
       logger.debug("current load: "+actors.map(a => a.dispatcher.mailboxSize(a)).mkString("[", ", ", "]"));
       val actor = actors.sortWith((a:ActorRef, b:ActorRef) => 
         a.dispatcher.mailboxSize(a) < b.dispatcher.mailboxSize(b)).head
       logger.debug("balancing to "+actor+" with size "+actor.dispatcher.mailboxSize(actor))
+      */
+      val actor = actors(0)
       actor forward params
     }
   }
@@ -161,12 +170,13 @@ class ScreenshotProcessing extends Actor {
 
   def receive = {
     // process screenshot with phantomjs
-    case params: ScreenshotRequest => {
+    case (params: ScreenshotRequest, promise: Redeemable[Either[Screenshot, ScreenshotError]]) => {
       logger.debug("processing... "+params)
       val screenshot = process(params) 
       logger.debug("done.")
       Screenshot.cacheActor ! (params, screenshot) // send it to the cache actor
-      self reply screenshot
+      //sender ! screenshot
+      promise.redeem(screenshot)
     }
   }
 }
@@ -174,14 +184,14 @@ class ScreenshotProcessing extends Actor {
 /*** core ***/
 
 object ScreenshotCache {
-  lazy val cache = new BasicCache()
-  lazy val errorCache = new BasicCache()
+  lazy val cache = Cache
+  lazy val errorCache = Cache
   val constExpirationSeconds = Play.configuration.getInt("screenshot.cache.expiration").getOrElse(600)
   def expirationSeconds() = (constExpirationSeconds * (0.95 + 0.1*Math.random)).toInt // +- 5% of randomness
   val errorExpirationSeconds = Play.configuration.getInt("screenshot.error.cache.expiration").getOrElse(300)
 
   def get(params:ScreenshotRequest) : Option[Either[Screenshot, ScreenshotError]] = {
-    val s:Option[Either[Screenshot, ScreenshotError]] = cache.get[Screenshot](params.toString).flatMap(screenshot => {
+    val s:Option[Either[Screenshot, ScreenshotError]] = cache.getAs[Screenshot](params.toString).flatMap(screenshot => {
       if (screenshot.file exists) 
         Some(Left(screenshot))
       else {
@@ -189,7 +199,7 @@ object ScreenshotCache {
         None
       }
     })
-    if (s.isDefined) s else errorCache.get[ScreenshotError](params.toString).map(e => Right(e))
+    if (s.isDefined) s else errorCache.getAs[ScreenshotError](params.toString).map(e => Right(e))
   }
 
   def set(params:ScreenshotRequest, screenshot:Screenshot) = {

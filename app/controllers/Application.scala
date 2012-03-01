@@ -5,11 +5,10 @@ import java.io._
 import play.api._
 import play.api.mvc._
 import play.api.libs.concurrent._
-import play.api.cache.BasicCache
 import play.api.Play.current
 import screenshot._
 import Screenshot._
-import akka.dispatch._
+import akka.actor.ActorTimeoutException
 
 
 object Application extends Controller {
@@ -39,7 +38,7 @@ object Application extends Controller {
               case _ => InternalServerError("Screenshot processing failed.")
   }
               case Thrown(e) => e match {
-                case e:FutureTimeoutException => Status(503)("The server was not able to finish processing the screenshot.")
+                case e:ActorTimeoutException => Status(503)("The server was not able to finish processing the screenshot.")
             }
         })
       }
