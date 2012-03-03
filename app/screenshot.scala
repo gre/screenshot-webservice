@@ -49,24 +49,16 @@ case class Screenshot(filepath: String, date: Date, expiration: Int) {
 }
 
 object Screenshot {
-  var system = ActorSystem("screenshot")
-  val processingActor = system.actorOf(Props[ScreenshotProcessingBalancer])
-  val cacheActor = system.actorOf(Props[ScreenshotCache])
+  //var system = ActorSystem("screenshot")
+  //val processingActor = system.actorOf(Props[ScreenshotProcessingBalancer])
+  //val cacheActor = system.actorOf(Props[ScreenshotCache])
 
   private val waitingRequests: MMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]] = 
     new MHashMap[ScreenshotRequest, Promise[Either[Screenshot, ScreenshotError]]]()
 
   def apply(params:ScreenshotRequest) : Promise[Either[Screenshot, ScreenshotError]] = {
     waitingRequests.get(params) getOrElse {
-      val promise = Promise()
-      /*
-      val promise = cacheActor.!(params)(timeout = 120 seconds).
-                    mapTo[Either[Screenshot, ScreenshotError]].asPromise
-      */
-      waitingRequests += ( (params, promise) )
-      cacheActor ! (params, promise)
-      promise extend (p => waitingRequests -= params)
-      promise
+      Promise.pure(ScreenshotProcessing.process(params))
     }
   }
 
@@ -117,6 +109,7 @@ object NetworkError extends ScreenshotError("Resource unreachable.")
 object UnknownError extends ScreenshotError("Resource screenshot processing failed.")
 
 /*** Actors ***/
+/*
 
 class ScreenshotCache extends Actor {
   import ScreenshotCache._
@@ -152,14 +145,11 @@ class ScreenshotProcessingBalancer extends Actor {
   def receive = {
     // find the most available actor : not sure about this first implementation (sounds like it's fair only if all screenshots takes the same time to render which is wrong, maybe actors should pull for new screenshot requests?)
     case params: ScreenshotRequest => {
-      /*
+      
       logger.debug("current load: "+actors.map(a => a.dispatcher.mailboxSize(a)).mkString("[", ", ", "]"));
       val actor = actors.sortWith((a:ActorRef, b:ActorRef) => 
         a.dispatcher.mailboxSize(a) < b.dispatcher.mailboxSize(b)).head
       logger.debug("balancing to "+actor+" with size "+actor.dispatcher.mailboxSize(actor))
-      */
-      val actor = actors(0)
-      actor forward params
     }
   }
 }
@@ -180,6 +170,7 @@ class ScreenshotProcessing extends Actor {
     }
   }
 }
+*/
 
 /*** core ***/
 
