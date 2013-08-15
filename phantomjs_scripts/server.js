@@ -1,5 +1,5 @@
 var version = "1.1";
-var phantom_version = phantom.version.major+"."+phantom.version.minor+"."+phantom.version.patch
+var phantom_version = phantom.version.major+"."+phantom.version.minor+"."+phantom.version.patch;
 
 var TIMEOUT = 30000;
 var PORT = 9866;
@@ -11,7 +11,7 @@ if (phantom.args.length != 0 && phantom.args.length != 2) {
 var width = parseInt(phantom.args[0] || 1024);
 var height = parseInt(phantom.args[1] || 1024);
 
-var queryString = function(a,b,c,d,e){for(b=/[?&]?([^=]+)=([^&]*)/g,c={},e=decodeURIComponent;d=b.exec(a.replace(/\+/g,' '));c[e(d[1])]=e(d[2]));return c;}
+var queryString = function(a,b,c,d,e){for(b=/[?&]?([^=]+)=([^&]*)/g,c={},e=decodeURIComponent;d=b.exec(a.replace(/\+/g,' '));c[e(d[1])]=e(d[2]));return c;};
 
 function renderUrlToFile(url, file, width, height, success, error) {
   console.log("Rendering... "+url+" in "+file+" "+width+"x"+height);
