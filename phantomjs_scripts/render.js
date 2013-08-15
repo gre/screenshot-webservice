@@ -14,7 +14,7 @@ var url = phantom.args[0];
 var output = phantom.args[1];
 var width = parseInt(phantom.args[2] || 1024);
 var height = parseInt(phantom.args[3] || 1024);
-var phantom_version = phantom.version.major+"."+phantom.version.minor+"."+phantom.version.patch
+var phantom_version = phantom.version.major+"."+phantom.version.minor+"."+phantom.version.patch;
 
 renderUrlToFile(url, output, width, height, function(url, file){
   console.log("Rendered '"+url+"' at size ("+width+","+height+") into '"+output+"'");
