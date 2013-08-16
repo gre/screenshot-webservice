@@ -2,7 +2,7 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET     /                           controllers.Assets.at(path="/conf/", file="index.html")
+GET     /                           controllers.Assets.at(path="/public", file="index.html")
 
 GET     /screenshot.:format         controllers.Application.get(format)
 HEAD    /screenshot.:format         controllers.Application.touch(format)
