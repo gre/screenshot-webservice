@@ -6,7 +6,7 @@ object ApplicationBuild extends Build {
   val appName         = "screenshot-webservice"
   val appVersion      = "1.0"
 
-  val appDependencies = Seq()
+  val appDependencies = Seq(cache)
 
   val main = play.Project(appName, appVersion, appDependencies)
 }
