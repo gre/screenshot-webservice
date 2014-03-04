@@ -62,7 +62,7 @@ object Screenshot {
     }
   }
 
-  def responseFor(s:Screenshot)(implicit request:Request[_]) : SimpleResult[_] = {
+  def responseFor(s:Screenshot)(implicit request:Request[_]) : SimpleResult = {
     import s.contentTypeOf_Screenshot
     request.headers.get(IF_NONE_MATCH).filter(_ == etagFor(s)).map(_ ⇒ NotModified)
       .getOrElse(Ok(s)).withHeaders(s.headers:_*)
